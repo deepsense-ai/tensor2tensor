@@ -117,14 +117,17 @@ class GymDiscreteProblem(problem.Problem):
                "targets": flatten(observation)}
 
   def generate_data(self, data_dir, tmp_dir, task_id=-1):
+    # TODO(blazej0) - temporary for debugging purposes I've switched off the
+    # shuffling (last line of the function), but renamed the filepahts,
+    # so that they can be easily processed by downstream operations.
     train_paths = self.training_filepaths(
-        data_dir, self.num_shards, shuffled=False)
+        data_dir, self.num_shards, shuffled=True)  # TODO - should be False
     dev_paths = self.dev_filepaths(
-        data_dir, self.num_dev_shards, shuffled=False)
+        data_dir, self.num_dev_shards, shuffled=True)  # TODO - should be False
     all_paths = train_paths + dev_paths
     generator_utils.generate_files(
         self.generator(data_dir, tmp_dir), all_paths)
-    generator_utils.shuffle_dataset(all_paths)
+    #generator_utils.shuffle_dataset(all_paths)
 
 
 @registry.register_problem
@@ -152,10 +155,9 @@ class GymPongRandom5k(GymDiscreteProblem):
 class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
   """Pong game, loaded actions."""
 
-  def __init__(self, event_dir, *args, **kwargs):
+  def __init__(self, *args, **kwargs):
     super(GymPongTrajectoriesFromPolicy, self).__init__(*args, **kwargs)
     self._env = None
-    self._event_dir = event_dir
     env_spec = lambda: atari_wrappers.wrap_atari(  # pylint: disable=g-long-lambda
         gym.make("PongNoFrameskip-v4"),
         warp=False,

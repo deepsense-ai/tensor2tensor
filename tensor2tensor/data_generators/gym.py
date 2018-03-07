@@ -172,7 +172,7 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
       gym.make("PongNoFrameskip-v4"), warp=False, frame_skip=4, frame_stack=False)
     hparams = rl.atari_base()
     with tf.variable_scope("train", reuse=tf.AUTO_REUSE):
-      policy_lambda = hparams.network
+      policy_lambda = rl.feed_forward_cnn_small_categorical_fun #hparams.network # TODO - hack
       policy_factory = tf.make_template(
         "network",
         functools.partial(policy_lambda, env_spec().action_space, hparams))

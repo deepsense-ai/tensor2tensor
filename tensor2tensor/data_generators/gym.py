@@ -154,7 +154,7 @@ class GymPongRandom5k(GymDiscreteProblem):
 
   @property
   def num_steps(self):
-    return 5000
+    return 200
 
 
 
@@ -165,12 +165,13 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
 
   def __init__(self, event_dir, *args, **kwargs):
     super(GymPongTrajectoriesFromPolicy, self).__init__(*args, **kwargs)
+    print("           >>>>>>>>>>> GymPongTrajectoriesFromPolicy <<<<<<<<<<<<<<")
     self._env = None
     self._event_dir = event_dir
     env_spec = lambda: atari_wrappers.wrap_atari(
       gym.make("PongNoFrameskip-v4"), warp=False, frame_skip=4, frame_stack=False)
     hparams = rl.atari_base()
-    with tf.variable_scope("train"):
+    with tf.variable_scope("train", reuse=tf.AUTO_REUSE):
       policy_lambda = hparams.network
       policy_factory = tf.make_template(
         "network",
@@ -214,4 +215,4 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
 
   @property
   def num_steps(self):
-    return 5000
+    return 200

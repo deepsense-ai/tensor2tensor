@@ -63,7 +63,7 @@ def continuous_action_base():
 @registry.register_hparams
 def discrete_action_base():
   hparams = ppo_base_v1()
- # hparams.add_hparam("network", feed_forward_categorical_fun)
+  hparams.add_hparam("network", feed_forward_categorical_fun)
   return hparams
 
 
@@ -80,7 +80,7 @@ def atari_base():
   hparams.optimization_epochs = 10
   hparams.epochs_num = 10000
   hparams.num_eval_agents = 1
-  # hparams.network = feed_forward_cnn_small_categorical_fun
+  hparams.network = feed_forward_cnn_small_categorical_fun
   return hparams
 
 

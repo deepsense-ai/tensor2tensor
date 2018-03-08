@@ -68,37 +68,6 @@ class GymDiscreteProblem(problem.Problem):
         "action": tf.FixedLenFeature([1], tf.int64)
     }
 
-    # data_fields = {
-    #     "image/encoded": tf.FixedLenFeature((), tf.string),
-    #     "image/format": tf.FixedLenFeature((), tf.string),
-    #     "image_prev/encoded": tf.FixedLenFeature((), tf.string),
-    #     "image_prev/format": tf.FixedLenFeature((), tf.string),
-    #     "image_target/encoded": tf.FixedLenFeature((), tf.string),
-    #     "image_target/format": tf.FixedLenFeature((), tf.string),
-    #     "action": tf.FixedLenFeature([1], tf.int64)
-    # }
-    #
-    # data_items_to_decoders = {
-    #     "inputs":
-    #         tf.contrib.slim.tfexample_decoder.Image(
-    #             image_key="image/encoded",
-    #             format_key="image/format",
-    #             channels=3),
-    #     "inputs_prev":
-    #         tf.contrib.slim.tfexample_decoder.Image(
-    #             image_key="image_prev/encoded",
-    #             format_key="image_prev/format",
-    #             channels=3),
-    #     "targets":
-    #         tf.contrib.slim.tfexample_decoder.Image(
-    #             image_key="image_target/encoded",
-    #             format_key="image_target/format",
-    #             channels=3),
-    #     "action":
-    #         tf.contrib.slim.tfexample_decoder.Tensor(tensor_key = "action")
-    # }
-
-    # return data_fields, data_items_to_decoders
     return data_fields, None
 
   @property
@@ -209,11 +178,19 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
     print("           >>>>>>>>>>> GymPongTrajectoriesFromPolicy <<<<<<<<<<<<<<")
     self._env = None
     self._event_dir = event_dir
+    self._last_policy_op = None
+    self._max_frame_pl = None
+    self._last_action = self.env.action_space.sample()
+    self._skip = 4
+    self._skip_step = 0
+    self._obs_buffer = np.zeros((2,) + self.env.observation_space.shape, dtype=np.uint8)
+
+  def generator(self, data_dir, tmp_dir):
     env_spec = lambda: atari_wrappers.wrap_atari(
       gym.make("PongNoFrameskip-v4"), warp=False, frame_skip=4, frame_stack=False)
     hparams = rl.atari_base()
     with tf.variable_scope("train", reuse=tf.AUTO_REUSE):
-      policy_lambda = rl.feed_forward_cnn_small_categorical_fun #hparams.network # TODO - hack
+      policy_lambda = hparams.network
       policy_factory = tf.make_template(
         "network",
         functools.partial(policy_lambda, env_spec().action_space, hparams))
@@ -221,13 +198,11 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
       actor_critic = policy_factory(tf.expand_dims(tf.expand_dims(self._max_frame_pl, 0), 0))
       policy = actor_critic.policy
       self._last_policy_op = policy.mode()
-    self._last_action = self.env.action_space.sample()
-    self._skip = 4
-    self._skip_step = 0
-    self._obs_buffer = np.zeros((2,) + self.env.observation_space.shape, dtype=np.uint8)
-    self._sess = tf.Session()
-    model_saver = tf.train.Saver(tf.global_variables(".*network_parameters.*"))
-    model_saver.restore(self._sess, FLAGS.model_path)
+      with tf.Session() as sess:
+        model_saver = tf.train.Saver(tf.global_variables(".*network_parameters.*"))
+        model_saver.restore(sess, FLAGS.model_path)
+        for item in super(GymPongTrajectoriesFromPolicy, self).generator(data_dir, tmp_dir):
+            yield item
 
   # TODO(blazej0): For training of atari agents wrappers are usually used.
   # Below we have a hacky solution which is a temporary workaround to be used together
@@ -238,7 +213,7 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
     self._skip_step = (self._skip_step + 1) % self._skip
     if self._skip_step == 0:
       max_frame = self._obs_buffer.max(axis=0)
-      self._last_action = int(self._sess.run(
+      self._last_action = int(tf.get_default_session().run(
         self._last_policy_op, feed_dict={self._max_frame_pl: max_frame})[0, 0])
     return self._last_action
 

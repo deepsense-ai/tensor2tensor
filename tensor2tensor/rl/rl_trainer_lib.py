@@ -41,7 +41,7 @@ def define_train(hparams, environment_spec, event_dir):
     env_lambda = lambda: gym.make(environment_spec)
   else:
     env_lambda = environment_spec
-  policy_lambda = rl.feed_forward_cnn_small_categorical_fun # hparams.network # TODO - hack
+  policy_lambda = hparams.network
   env = env_lambda()
   action_space = env.action_space
 

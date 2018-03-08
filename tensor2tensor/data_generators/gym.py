@@ -59,6 +59,48 @@ class GymDiscreteProblem(problem.Problem):
     super(GymDiscreteProblem, self).__init__(*args, **kwargs)
     self._env = None
 
+  def example_reading_spec(self, label_repr=None):
+
+    data_fields = {
+        "inputs": tf.FixedLenFeature([210, 160, 3], tf.int64),
+        "inputs_prev": tf.FixedLenFeature([210, 160, 3], tf.int64),
+        "targets": tf.FixedLenFeature([210, 160, 3], tf.int64),
+        "action": tf.FixedLenFeature([1], tf.int64)
+    }
+
+    # data_fields = {
+    #     "image/encoded": tf.FixedLenFeature((), tf.string),
+    #     "image/format": tf.FixedLenFeature((), tf.string),
+    #     "image_prev/encoded": tf.FixedLenFeature((), tf.string),
+    #     "image_prev/format": tf.FixedLenFeature((), tf.string),
+    #     "image_target/encoded": tf.FixedLenFeature((), tf.string),
+    #     "image_target/format": tf.FixedLenFeature((), tf.string),
+    #     "action": tf.FixedLenFeature([1], tf.int64)
+    # }
+    #
+    # data_items_to_decoders = {
+    #     "inputs":
+    #         tf.contrib.slim.tfexample_decoder.Image(
+    #             image_key="image/encoded",
+    #             format_key="image/format",
+    #             channels=3),
+    #     "inputs_prev":
+    #         tf.contrib.slim.tfexample_decoder.Image(
+    #             image_key="image_prev/encoded",
+    #             format_key="image_prev/format",
+    #             channels=3),
+    #     "targets":
+    #         tf.contrib.slim.tfexample_decoder.Image(
+    #             image_key="image_target/encoded",
+    #             format_key="image_target/format",
+    #             channels=3),
+    #     "action":
+    #         tf.contrib.slim.tfexample_decoder.Tensor(tensor_key = "action")
+    # }
+
+    # return data_fields, data_items_to_decoders
+    return data_fields, None
+
   @property
   def env_name(self):
     # This is the name of the Gym environment for this problem.
@@ -142,7 +184,7 @@ class GymPongRandom5k(GymDiscreteProblem):
 
   @property
   def env_name(self):
-    return "Pong-v0"
+    return "PongNoFrameskip-v4"
 
   @property
   def num_actions(self):
@@ -155,7 +197,6 @@ class GymPongRandom5k(GymDiscreteProblem):
   @property
   def num_steps(self):
     return 200
-
 
 
 

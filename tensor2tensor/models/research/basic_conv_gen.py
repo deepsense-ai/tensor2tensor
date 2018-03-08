@@ -37,6 +37,7 @@ class BasicConvGen(t2t_model.T2TModel):
     filters = self.hparams.hidden_size
     cur_frame = tf.to_float(features["inputs"])
     prev_frame = tf.to_float(features["inputs_prev"])
+    print(features["inputs"].shape, cur_frame.shape, prev_frame.shape)
     action = common_layers.embedding(tf.to_int64(features["action"]),
                                      10, filters)
     action = tf.reshape(action, [-1, 1, 1, filters])

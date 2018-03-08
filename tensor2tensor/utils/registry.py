@@ -413,7 +413,6 @@ def create_modality(modality_spec, model_hparams):
       Modalities.REAL: real_modality,
   }
 
-  print(modality_spec)
   modality_full_name, vocab_size = modality_spec
   modality_type, modality_name = parse_modality_name(modality_full_name)
   if modality_type not in retrieval_fns:

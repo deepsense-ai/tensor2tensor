@@ -165,7 +165,7 @@ class GymPongRandom5k(GymDiscreteProblem):
 
   @property
   def num_steps(self):
-    return 200
+    return 5000
 
 
 
@@ -175,7 +175,6 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
 
   def __init__(self, event_dir, *args, **kwargs):
     super(GymPongTrajectoriesFromPolicy, self).__init__(*args, **kwargs)
-    print("           >>>>>>>>>>> GymPongTrajectoriesFromPolicy <<<<<<<<<<<<<<")
     self._env = None
     self._event_dir = event_dir
     self._last_policy_op = None
@@ -231,4 +230,4 @@ class GymPongTrajectoriesFromPolicy(GymDiscreteProblem):
 
   @property
   def num_steps(self):
-    return 200
+    return 5000

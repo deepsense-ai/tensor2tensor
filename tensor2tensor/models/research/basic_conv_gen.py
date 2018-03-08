@@ -59,4 +59,5 @@ def basic_conv_small():
   # """Small conv model."""
   hparams = common_hparams.basic_params1()
   hparams.hidden_size = 32
+  hparams.batch_size = 2
   return hparams

@@ -363,6 +363,7 @@ class T2TModel(base.Layer):
     self._hparams = hparams
 
   def _create_modalities(self, problem_hparams, hparams):
+    print("   >>> _create_modalities")
     """Construct modalities in problem_hparams."""
 
     input_modality_overrides = {}

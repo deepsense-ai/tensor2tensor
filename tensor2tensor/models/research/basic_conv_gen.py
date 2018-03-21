@@ -34,8 +34,8 @@ class BasicConvGen(t2t_model.T2TModel):
 
   def body(self, features):
     filters = self.hparams.hidden_size
-    cur_frame = tf.to_float(features["inputs"])
-    prev_frame = tf.to_float(features["inputs_prev"])
+    cur_frame = tf.to_float(features["inputs_0"])
+    prev_frame = tf.to_float(features["inputs_1"])
     action_embedding_size = 32
     action_space_size = 10
     kernel = (3, 3)
@@ -43,24 +43,29 @@ class BasicConvGen(t2t_model.T2TModel):
     action = common_layers.embedding(tf.to_int64(features["action"]),
                                      action_space_size, action_embedding_size)
     action = tf.reshape(action, [-1, 1, 1, action_embedding_size])
+    #broadcast to the shape compatibile with pictures
+    action += tf.expand_dims(tf.zeros_like(cur_frame[..., 0]), -1)
     frames = tf.concat([cur_frame, prev_frame, action], axis=3)
     x = tf.layers.conv2d(frames, filters, kernel, activation=tf.nn.relu,
                          strides=(2, 2), padding="SAME")
     # Run a stack of convolutions.
-    for _ in xrange(self.num_hidden_layers):
+    for _ in range(filters): #self.num_hidden_layers):
       y = tf.layers.conv2d(frames, filters, kernel, activation=tf.nn.relu,
-                           strides=(1, 1), padding="SAME")
+                           strides=(2, 2), padding="SAME")  # TODO (1,1)
       x = common_layers.layer_norm(x + y)
     # Up-convolve.
     x = tf.layers.conv2d_transpose(
         frames, filters, kernel, activation=tf.nn.relu,
-        strides=(2, 2), padding="SAME")
+        strides=(1, 1), padding="SAME")
     # Output size is 3 * 256 for 3-channel color space.
     res = tf.layers.conv2d(x, 3 * 256, kernel, padding="SAME")
-    height = tf.shape(res)[1]
-    width = tf.shape(res)[2]
-    res = tf.reshape(res, [-1, height, width, 3, 256])
-    return res
+    x = tf.layers.flatten(x)
+
+    # TODO: pm->pm: add done
+    res_done = tf.layers.dense(x, 2)
+
+    #TODO: pm remove tf.identity below
+    return {"targets":tf.identity(res), "reward": x}
 
 
 @registry.register_hparams

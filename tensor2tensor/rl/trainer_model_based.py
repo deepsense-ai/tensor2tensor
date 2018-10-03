@@ -190,7 +190,8 @@ def train_agent(problem_name, agent_model_dir,
   ppo_hparams = trainer_lib.create_hparams(hparams.ppo_params)
   ppo_params_names = ["epochs_num", "epoch_length",
                       "learning_rate", "num_agents",
-                      "optimization_epochs", "eval_every_epochs"]
+                      "optimization_epochs", "eval_every_epochs",
+                      "num_eval_agents"]
 
   for param_name in ppo_params_names:
     ppo_param_name = "ppo_" + param_name
@@ -217,6 +218,12 @@ def train_agent(problem_name, agent_model_dir,
   ppo_hparams.add_hparam("initial_frame_chooser", InitialFrameChooser(
       environment_spec, mode=tf.estimator.ModeKeys.TRAIN
   ))
+  if getattr(hparams, "train_agent_real_env_eval", None):
+    environment_spec = copy.copy(gym_problem.environment_spec)
+    environment_spec.simulated_env = False
+    environment_spec.add_hparam("policy_to_actions_lambda",
+                                lambda policy: policy.sample())
+    ppo_hparams.add_hparam("environment_eval_spec", environment_spec)
 
   with temporary_flags({
       "problem": problem_name,
@@ -771,6 +778,7 @@ def rlmb_base():
       ppo_num_agents=16,
       # Do not eval since simulated batch env does not produce dones
       ppo_eval_every_epochs=0,
+      ppo_num_eval_agents=0,
       ppo_learning_rate=1e-4,  # Will be changed, just so it exists.
       # Whether the PPO agent should be restored from the previous iteration, or
       # should start fresh each time.
@@ -803,6 +811,11 @@ def rlmb_base():
       # Rollout fractions to report reward_accuracy on.
       eval_rollout_fractions=[0.25, 0.5, 1],
       stop_loop_early=False,  # To speed-up tests.
+
+      # Eval real on real during simulated training
+      # this to determine correct length of training
+      # on simulated env
+      train_agent_real_env_eval=False,
   )
 
 
@@ -1059,14 +1072,19 @@ def rlmb_tiny():
           ppo_time_limit=5,
           ppo_epoch_length=5,
           ppo_num_agents=2,
+          ppo_eval_every_epochs = 1,
+          ppo_num_eval_agents = 10,
           real_ppo_epoch_length=36,
           real_ppo_num_agents=1,
           real_ppo_epochs_num=0,
           real_ppo_effective_num_agents=2,
           generative_model_params="next_frame_tiny",
           stop_loop_early=True,
-          resize_height_factor=2,
-          resize_width_factor=2,
+          resize_height_factor=1,
+          resize_width_factor=1,
+          gather_ppo_real_env_data=False,
+          train_agent_real_env_eval=True,
+
           game="pong",
       ).values())
 

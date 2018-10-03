@@ -118,6 +118,12 @@ def define_collect(hparams, scope, eval_phase,
           environment_spec, num_agents,
           initial_frame_chooser=initial_frame_chooser)
 
+    #TODO(piotrmilos): refactor. policy_to_actions_lambda should be passed by hparams
+    #TODO(piotrmilos): refactor. remove two types of policy_to_actions_lambda
+    policy_to_actions_lambda = getattr(hparams,
+                                       "policy_to_actions_lambda",
+                                       policy_to_actions_lambda)
+
     to_initialize.append(batch_env)
     environment_wrappers = environment_spec.wrappers
     wrappers = copy.copy(environment_wrappers) if environment_wrappers else []

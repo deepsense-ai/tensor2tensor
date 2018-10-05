@@ -213,12 +213,14 @@ def feed_forward_categorical_fun(action_space, config, observations):
   with tf.variable_scope("network_parameters"):
     with tf.variable_scope("policy"):
       x = flat_observations
+      x = tf.cast(x, dtype=tf.float32)
       for size in config.policy_layers:
         x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
       logits = tf.contrib.layers.fully_connected(x, action_space.n,
                                                  activation_fn=None)
     with tf.variable_scope("value"):
       x = flat_observations
+      x = tf.cast(x, dtype=tf.float32)
       for size in config.value_layers:
         x = tf.contrib.layers.fully_connected(x, size, tf.nn.relu)
       value = tf.contrib.layers.fully_connected(x, 1, None)[..., 0]

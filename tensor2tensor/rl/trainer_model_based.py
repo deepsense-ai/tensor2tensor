@@ -35,7 +35,7 @@ import time
 
 import numpy as np
 import six
-
+from gym.wrappers import Monitor
 
 from tensor2tensor.bin import t2t_trainer
 from tensor2tensor.data_generators import generator_utils
@@ -182,6 +182,59 @@ def _ppo_training_epochs(hparams, epoch, is_final_epoch, real_env_training):
   return ppo_training_epochs
 
 
+from gym.core import Wrapper
+class ResetHandler(Wrapper):
+
+  def __init__(self, env):
+    super().__init__(env)
+    self._observ = None
+    self._done = None
+
+
+  def step(self, action):
+    ret = self.env.step(action)
+    self._observ = ret[0]
+    self._done = ret[2]
+
+    return ret
+
+  def reset(self, **kwargs):
+    if self._done is not None and not self._done:
+      return self._observ
+    else:
+      self._done = False
+      self._observ = self.env.reset(**kwargs)
+      return self._observ
+
+
+class MoreDones(Wrapper):
+
+  def __init__(self, env, horizon=50):
+    super().__init__(env)
+    self._counter = 0
+    self._observ = None
+    self._done = True
+    self._horizon = horizon
+
+  def step(self, action):
+    self._counter += 1
+    observ, rew, done, info = self.env.step(action)
+    self._observ = observ
+    self._done = done
+
+    if self._counter % self._horizon == 0:
+      done = True
+
+    return observ, rew, done, info
+
+  def reset(self, **kwargs):
+    self._counter = 0
+    if self._done or self._observ is None:
+      return self.env.reset(**kwargs)
+    else:
+      return self._observ
+
+
 def train_agent(problem_name, agent_model_dir,
                 event_dir, world_model_dir, epoch_data_dir, hparams, epoch=0,
                 is_final_epoch=False):
@@ -200,7 +253,7 @@ def train_agent(problem_name, agent_model_dir,
 
   ppo_hparams.epochs_num = _ppo_training_epochs(hparams, epoch,
                                                 is_final_epoch, False)
-  ppo_hparams.save_models_every_epochs = 10
+  ppo_hparams.save_models_every_epochs = 50
   ppo_hparams.world_model_dir = world_model_dir
   ppo_hparams.add_hparam("force_beginning_resets", True)
 
@@ -220,10 +273,15 @@ def train_agent(problem_name, agent_model_dir,
   ))
   if getattr(hparams, "train_agent_real_env_eval", None):
     environment_spec = copy.copy(gym_problem.environment_spec)
+
+    # newlambda = lambda : ResetHandler(Monitor(gym_problem.environment_spec.env_lambda(), directory=".", force=True))
+    newlambda = lambda : MoreDones(gym_problem.environment_spec.env_lambda())
+    environment_spec.env_lambda = newlambda
     environment_spec.simulated_env = False
     environment_spec.add_hparam("policy_to_actions_lambda",
                                 lambda policy: policy.sample())
     ppo_hparams.add_hparam("environment_eval_spec", environment_spec)
+    print("Eval on real environment with hparms:{}".format(environment_spec))
 
   with temporary_flags({
       "problem": problem_name,

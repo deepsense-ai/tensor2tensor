@@ -111,7 +111,8 @@ def define_collect(hparams, scope, eval_phase,
       environment_spec = getattr(hparams, "environment_eval_spec",
                                  environment_spec)
       num_agents = getattr(hparams, "num_eval_agents", num_agents)
-      batch_env = batch_env_factory(environment_spec, num_agents)
+      print("Evaling agent with paramters: {}".format(environment_spec))
+      batch_env = batch_env_factory(environment_spec, num_agents, xvfb=True)
     else:
       initial_frame_chooser = getattr(hparams, "initial_frame_chooser", None)
       batch_env = batch_env_factory(
@@ -123,6 +124,7 @@ def define_collect(hparams, scope, eval_phase,
     policy_to_actions_lambda = getattr(hparams,
                                        "policy_to_actions_lambda",
                                        policy_to_actions_lambda)
+    print("policy_to_actions_lambda:{}".format(policy_to_actions_lambda))
 
     to_initialize.append(batch_env)
     environment_wrappers = environment_spec.wrappers
@@ -166,6 +168,7 @@ def define_collect(hparams, scope, eval_phase,
     force_beginning_resets = hparams.force_beginning_resets
   else:
     force_beginning_resets = False
+  print("force_beginning_resets:{} ".format(force_beginning_resets))
   force_beginning_resets = tf.convert_to_tensor(force_beginning_resets)
 
   def reset_ops_group():
@@ -197,7 +200,7 @@ def define_collect(hparams, scope, eval_phase,
           action = policy_to_actions_lambda(policy)
         else:
           action = tf.cond(eval_phase_t,
-                           policy.mode,
+                           policy.sample,
                            policy.sample)
 
         postprocessed_action = actor_critic.action_postprocessing(action)

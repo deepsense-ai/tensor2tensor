@@ -61,7 +61,7 @@ def train(hparams, event_dir=None, model_dir=None,
 
       if model_dir:
         model_saver = tf.train.Saver(
-            tf.global_variables(".*network_parameters.*"))
+            tf.global_variables(".*network_parameters.*"), max_to_keep=10000)
       else:
         model_saver = None
 

@@ -82,7 +82,9 @@ def train(hparams, event_dir=None, model_dir=None,
               hparams.world_model_dir, env_model_loader, sess,
               must_restore=True)
         start_step = 0
+        print("About to restore 1 .....")
         if model_saver and restore_agent:
+          print("About to restore 2 .....:{}".format(model_dir))
           start_step = trainer_lib.restore_checkpoint(
               model_dir, model_saver, sess)
 

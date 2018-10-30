@@ -60,11 +60,11 @@ def rlmb_base():
       autoencoder_hparams_set="autoencoder_discrete_pong",
       model_train_steps=15000,
       initial_epoch_train_steps_multiplier=3,
-      simulated_env_generator_num_steps=2000,
       simulation_random_starts=True,  # Use random starts in PPO.
       # Flip the first random frame in PPO batch for the true beginning.
       simulation_flip_first_random_for_beginning=True,
       intrinsic_reward_scale=0.,
+      rl_algorithm='ppo',
       ppo_epochs_num=1000,  # This should be enough to see something
       # Our simulated envs do not know how to reset.
       # You should set ppo_time_limit to the value you believe that
@@ -94,11 +94,9 @@ def rlmb_base():
       # In your experiments, you want to optimize this rate to your schedule.
       learning_rate_bump=3.0,
 
-      gather_ppo_real_env_data=True,
       real_ppo_epochs_num=0,
       # This needs to be divisible by real_ppo_effective_num_agents.
       real_ppo_epoch_length=16*200,
-      real_ppo_num_agents=1,
       real_ppo_learning_rate=1e-4,
       real_ppo_continue_training=True,
       real_ppo_effective_num_agents=16,
@@ -114,8 +112,127 @@ def rlmb_base():
       # Rollout fractions to report reward_accuracy on.
       eval_rollout_fractions=[0.25, 0.5, 1],
       stop_loop_early=False,  # To speed-up tests.
-      env_timesteps_limit=-1,  # Use default from gym.make()
+      real_env_timesteps_limit=-1,  # Use default from gym.make()
   )
+
+
+@registry.register_hparams
+def rl_dqn_base():
+  # TODO(KC): refactor to not duplicate parameters from rlmb_base(), this will
+  # hit us every time something is added to rlmb_base().
+
+  # These params are based on agents/dqn/configs/dqn.gin
+  # with some modifications taking into account our code
+  return tf.contrib.training.HParams(
+      agent_gamma=0.99,
+      agent_update_horizon=1,
+      agent_min_replay_history=20000,  # agent steps
+      agent_update_period=4,
+      agent_target_update_period=8000,  # agent steps
+      agent_epsilon_train=0.01,
+      agent_epsilon_eval=0.001,
+      agent_epsilon_decay_period=250000,  # agent steps
+      agent_generates_trainable_dones=True,
+
+      optimizer_class="RMSProp",
+      optimizer_learning_rate=0.00025,
+      optimizer_decay=0.95,
+      optimizer_momentum=0.0,
+      optimizer_epsilon=0.00001,
+      optimizer_centered=True,
+
+      # runner_training_steps=250000,  # agent steps
+      # TODO(KC): this is unused, remove it?
+      runner_max_steps_per_episode=27000,  # agent steps
+
+      replay_buffer_replay_capacity=1000000,
+      replay_buffer_batch_size=32,
+      time_limit=27000,
+  )
+
+
+@registry.register_hparams
+def rlmb_dqn_base():
+  return tf.contrib.training.HParams(
+      epochs=15,
+      # Total frames used for training. This will be distributed evenly across
+      # hparams.epochs.
+      # This number should be divisible by real_ppo_epoch_length*epochs
+      # for our frame accounting to be preceise.
+      num_real_env_frames=96000,
+      generative_model="next_frame_basic_deterministic",
+      generative_model_params="next_frame_pixel_noise",
+      autoencoder_train_steps=0,
+      autoencoder_train_steps_initial_multiplier=10,
+      autoencoder_hparams_set="autoencoder_discrete_pong",
+      model_train_steps=15000,
+      initial_epoch_train_steps_multiplier=3,
+      simulation_random_starts=True,  # Use random starts in PPO.
+      # Flip the first random frame in PPO batch for the true beginning.
+      simulation_flip_first_random_for_beginning=True,
+      intrinsic_reward_scale=0.,
+
+      # Resizing.
+      resize_height_factor=1,
+      resize_width_factor=1,
+      grayscale=False,
+      # Maximum number of noops to make on environment reset.
+      max_num_noops=8,
+      # Bump learning rate after first epoch by 3x.
+      # We picked 3x because our default learning rate schedule decreases with
+      # 1/square root of step; 1/sqrt(10k) = 0.01 and 1/sqrt(100k) ~ 0.0032
+      # so by bumping it up 3x we about "go back" from 100k steps to 10k, which
+      # is approximately as much as "going back 1 epoch" would be.
+      # In your experiments, you want to optimize this rate to your schedule.
+      learning_rate_bump=3.0,
+
+      rl_algorithm='dqn',
+      dqn_params='rl_dqn_base',
+      # Simulated DQN hparams
+      dqn_time_limit=10,
+      # Ignore 'artificial' simulated episode ends when learning Q-value.
+      dqn_agent_generates_trainable_dones=False,
+      # Different prefix, to not pass to _DQNAgent.
+      simulated_dqn_training_steps=int(1e7),
+
+      game="pong",
+      # Whether to evaluate the world model in each iteration of the loop to get
+      # the model_reward_accuracy metric.
+      eval_world_model=True,
+      # Rollout fractions to report reward_accuracy on.
+      eval_rollout_fractions=[0.25, 0.5, 1],
+      stop_loop_early=False,  # To speed-up tests.
+      # Used for tiny runs (independent of dqn timesteps limit, both are
+      # applied when using DQN)
+      real_env_timesteps_limit=-1,  # Use default from gym.make()
+
+      # TODO(piotrmilos): possibly remove this
+      ppo_continue_training=True,
+
+      eval_num_agents=3,
+      eval_max_num_noops=8,
+
+      #TODO(piotrmilos): needed for evaluation. Refactor.
+      ppo_params="ppo_atari_base",
+      ppo_num_agents=4,
+  )
+
+
+@registry.register_hparams
+def rlmb_dqn_tiny():
+  """Tiny set for testing."""
+  hparams = rlmb_dqn_base().override_from_dict(dict(
+      epochs=1,
+      num_real_env_frames=128,
+      model_train_steps=2,
+      generative_model_params="next_frame_tiny",
+      stop_loop_early=True,
+      simulated_dqn_training_steps=256,
+      real_env_timesteps_limit=6,
+  ))
+  hparams.add_hparam('real_dqn_agent_min_replay_history', 10)
+  hparams.add_hparam('dqn_agent_min_replay_history', 10)
+  return hparams
 
 
 @registry.register_hparams
@@ -126,7 +243,6 @@ def rlmb_basetest():
   hparams.epochs = 2
   hparams.num_real_env_frames = 3200
   hparams.model_train_steps = 100
-  hparams.simulated_env_generator_num_steps = 20
   hparams.ppo_epochs_num = 2
   return hparams
 
@@ -385,14 +501,12 @@ def rlmb_tiny():
       tf.contrib.training.HParams(
           epochs=1,
           num_real_env_frames=128,
-          simulated_env_generator_num_steps=64,
           model_train_steps=2,
           ppo_epochs_num=2,
           ppo_time_limit=5,
           ppo_epoch_length=5,
           ppo_num_agents=2,
           real_ppo_epoch_length=36,
-          real_ppo_num_agents=1,
           real_ppo_epochs_num=0,
           real_ppo_effective_num_agents=2,
           eval_num_agents=1,
@@ -401,9 +515,19 @@ def rlmb_tiny():
           resize_height_factor=2,
           resize_width_factor=2,
           game="pong",
-          env_timesteps_limit=6,
+          real_env_timesteps_limit=6,
       ).values())
 
+
+
+@registry.register_hparams
+def rlmb_tiny_big():
+  """Tiny set for testing."""
+  return rlmb_tiny().override_from_dict(
+      tf.contrib.training.HParams(
+          resize_height_factor=1,
+          resize_width_factor=1,
+      ).values())
 
 @registry.register_hparams
 def rlmb_tiny_stochastic():
@@ -442,7 +566,6 @@ def rlmb_ae_base():
   hparams.ppo_params = "ppo_pong_ae_base"
   hparams.generative_model_params = "next_frame_ae"
   hparams.autoencoder_hparams_set = "autoencoder_discrete_pong"
-  hparams.gather_ppo_real_env_data = False
   hparams.autoencoder_train_steps = 5000
   hparams.resize_height_factor = 1
   hparams.resize_width_factor = 1
@@ -459,7 +582,6 @@ def rlmb_ae_basetest():
   hparams.num_real_env_frames = 3200
   hparams.model_train_steps = 100
   hparams.autoencoder_train_steps = 10
-  hparams.simulated_env_generator_num_steps = 20
   hparams.ppo_epochs_num = 2
   return hparams
 
@@ -471,7 +593,6 @@ def rlmb_ae_tiny():
   hparams.ppo_params = "ppo_pong_ae_base"
   hparams.generative_model_params = "next_frame_ae_tiny"
   hparams.autoencoder_hparams_set = "autoencoder_discrete_tiny"
-  hparams.gather_ppo_real_env_data = False
   hparams.resize_height_factor = 1
   hparams.resize_width_factor = 1
   hparams.grayscale = False

@@ -24,8 +24,7 @@ import os
 import tensorflow as tf
 
 from tensor2tensor.rl.envs.simulated_batch_gym_env import FlatBatchEnv, \
-  SimulatedBatchGymEnv
-
+  SimulatedBatchGymEnv, Dumper
 
 _dopamine_path = None
 try:
@@ -190,6 +189,7 @@ def get_create_env_fun(env_spec, world_model_dir, time_limit):
     del game_name, sticky_actions
     if simulated:
       batch_env = SimulatedBatchGymEnv(env_spec, 1, model_dir=world_model_dir)
+      batch_env = Dumper(batch_env)
     else:
       batch_env = env_spec.env
 

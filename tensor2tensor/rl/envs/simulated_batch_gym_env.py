@@ -28,6 +28,25 @@ import tensorflow as tf
 from gym import Env
 
 
+class Dumper(object):
+
+  def __init__(self, batch_env):
+    self.batch_env = batch_env
+    self.action_space = self.batch_env.action_space
+    self.observation_space = self.batch_env.observation_space
+    self._index = 0
+
+  def step(self, action):
+    import numpy as np
+    ret = self.batch_env.step(action)
+    np.savez("save_{}".format(self._index), ret)
+    self._index += 1
+    return ret
+
+  def reset(self):
+    return self.batch_env.reset()
+
+
 class FlatBatchEnv(Env):
   def __init__(self, batch_env):
     if batch_env.batch_size != 1:

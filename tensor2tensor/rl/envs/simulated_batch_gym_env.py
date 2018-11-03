@@ -32,6 +32,7 @@ class Dumper(object):
 
   def __init__(self, batch_env):
     self.batch_env = batch_env
+    self.batch_size = batch_env.batch_size
     self.action_space = self.batch_env.action_space
     self.observation_space = self.batch_env.observation_space
     self._index = 0
@@ -39,7 +40,8 @@ class Dumper(object):
   def step(self, action):
     import numpy as np
     ret = self.batch_env.step(action)
-    np.savez("save_{}".format(self._index), ret)
+    obs, rewards, dones = ret
+    np.savez("save_{}".format(self._index), obs=obs, rewards=rewards, dones=dones)
     self._index += 1
     return ret
 

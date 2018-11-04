@@ -592,15 +592,16 @@ def set_random_seed(seed):
 
 def restore_checkpoint(ckpt_dir, saver, sess, must_restore=False):
   """Restore from a checkpoint."""
-  print("ckpt_dir:{}".format(ckpt_dir))
-  ckpt = tf.train.get_checkpoint_state(ckpt_dir)
-  print("ckpt:{}".format(ckpt))
-  if must_restore and not ckpt:
-    raise ValueError("No checkpoint found in %s" % ckpt_dir)
-  if not ckpt:
-    return 0
-
-  path = ckpt.model_checkpoint_path
+  # print("ckpt_dir:{}".format(ckpt_dir))
+  # ckpt = tf.train.get_checkpoint_state(ckpt_dir)
+  # print("ckpt:{}".format(ckpt))
+  # if must_restore and not ckpt:
+  #   raise ValueError("No checkpoint found in %s" % ckpt_dir)
+  # if not ckpt:
+  #   return 0
+  #
+  # path = ckpt.model_checkpoint_path
+  path = "./model.ckpt-1"
   tf.logging.info("Restoring checkpoint %s", path)
   print("Restoring checkpoint %s", path)
   saver.restore(sess, path)

@@ -188,8 +188,10 @@ def get_create_env_fun(env_spec, world_model_dir, time_limit):
   def create_env_fun(game_name, sticky_actions=True):
     del game_name, sticky_actions
     if simulated:
+      print("Time limit:{}".format(time_limit))
+      # time_limit = 10
       batch_env = SimulatedBatchGymEnv(env_spec, 1, model_dir=world_model_dir)
-      batch_env = Dumper(batch_env)
+      batch_env = Dumper(batch_env, quiet_exit_on_step=10000)
     else:
       batch_env = env_spec.env
 

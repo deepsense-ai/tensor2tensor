@@ -30,12 +30,13 @@ from gym import Env
 
 class Dumper(object):
 
-  def __init__(self, batch_env):
+  def __init__(self, batch_env, quiet_exit_on_step=None):
     self.batch_env = batch_env
     self.batch_size = batch_env.batch_size
     self.action_space = self.batch_env.action_space
     self.observation_space = self.batch_env.observation_space
     self._index = 0
+    self._quiet_exit_on_step = quiet_exit_on_step
 
   def step(self, action):
     import numpy as np
@@ -43,9 +44,13 @@ class Dumper(object):
     obs, rewards, dones = ret
     np.savez("save_{}".format(self._index), obs=obs, rewards=rewards, dones=dones)
     self._index += 1
+    if self._quiet_exit_on_step is not None and self._index>=self._quiet_exit_on_step:
+      print("Exiting!!!!")
+      exit(0)
     return ret
 
   def reset(self):
+    print("Dumper reset:{}")
     return self.batch_env.reset()
 
 

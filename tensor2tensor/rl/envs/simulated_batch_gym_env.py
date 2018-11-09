@@ -49,8 +49,8 @@ class Dumper(object):
       exit(0)
     return ret
 
-  def reset(self):
-    print("Dumper reset:{}")
+  def reset(self, **kwargs):
+    print("Dumper reset")
     return self.batch_env.reset()
 
 
@@ -66,7 +66,8 @@ class FlatBatchEnv(Env):
     obs, rewards, dones = self.batch_env.step([action])
     return obs[0], rewards[0], dones[0], {}
 
-  def reset(self):
+  def reset(self, **kwargs):
+    print("FlatBatchenv:reset")
     return self.batch_env.reset()[0]
 
 

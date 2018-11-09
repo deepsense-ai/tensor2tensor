@@ -79,6 +79,8 @@ class GameOverOnDone(Wrapper):
   def step(self, action):
     ob, reward, done, info = self.env.step(action)
     self.game_over = done
+    if done:
+      print("GameOverWrapper done:true")
     return ob, reward, done, info
 
 

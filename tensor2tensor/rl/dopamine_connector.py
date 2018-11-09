@@ -193,7 +193,7 @@ def get_create_env_fun(env_spec, world_model_dir, time_limit):
       print("Time limit:{}".format(time_limit))
       # time_limit = 10
       batch_env = SimulatedBatchGymEnv(env_spec, 1, model_dir=world_model_dir)
-      batch_env = Dumper(batch_env, quiet_exit_on_step=10000)
+      batch_env = Dumper(batch_env, quiet_exit_on_step=1000)
     else:
       batch_env = env_spec.env
 

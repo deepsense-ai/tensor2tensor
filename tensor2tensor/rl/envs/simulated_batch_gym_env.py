@@ -30,19 +30,34 @@ from gym import Env
 
 class Dumper(object):
 
-  def __init__(self, batch_env, quiet_exit_on_step=None):
+  def __init__(self, batch_env, quiet_exit_on_step=None, dump_lambda=None):
     self.batch_env = batch_env
     self.batch_size = batch_env.batch_size
     self.action_space = self.batch_env.action_space
     self.observation_space = self.batch_env.observation_space
     self._index = 0
-    self._quiet_exit_on_step = quiet_exit_on_step
+    self._quiet_exit_on_step = quiet_exit_on_step if quiet_exit_on_step is not None else -1 #-1 is effectively +infty
+    self._dump_lambda = dump_lambda if dump_lambda is not None else lambda index: True
+
+  def _send_image_to_neptune(self, obs):
+    import neptune
+    from PIL import Image
+
+    pil_image = Image.fromarray(obs[0, ...])
+    ctx = neptune.Context()
+    ctx.channel_send('dumper_image', neptune.Image(
+      name='Frame: {}'.format(self._index),
+      description='',
+      data=pil_image
+    ))
 
   def step(self, action):
     import numpy as np
     ret = self.batch_env.step(action)
     obs, rewards, dones = ret
-    np.savez("save_{}".format(self._index), obs=obs, rewards=rewards, dones=dones)
+    if self._dump_lambda(self._index):
+      np.savez("save_{}".format(self._index), obs=obs, rewards=rewards, dones=dones)
+
     self._index += 1
     if self._quiet_exit_on_step is not None and self._index>=self._quiet_exit_on_step:
       print("Exiting!!!!")
@@ -50,7 +65,7 @@ class Dumper(object):
     return ret
 
   def reset(self, **kwargs):
-    print("Dumper reset")
+    print("Dumper reset at step:{}".format(self._index))
     return self.batch_env.reset()
 
 

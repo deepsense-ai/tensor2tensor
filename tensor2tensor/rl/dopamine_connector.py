@@ -27,23 +27,19 @@ from tensor2tensor.rl.envs.simulated_batch_gym_env import FlatBatchEnv, \
   SimulatedBatchGymEnv, Dumper
 
 _dopamine_path = None
-try:
-  # pylint: disable=wrong-import-position
-  import dopamine
-  import cv2
-  from dopamine.agents.dqn import dqn_agent
-  from dopamine.atari import run_experiment
-  from dopamine.agents.dqn.dqn_agent import OBSERVATION_SHAPE, STACK_SIZE
-  from dopamine.replay_memory import circular_replay_buffer
-  from dopamine.replay_memory.circular_replay_buffer import \
-  OutOfGraphReplayBuffer, ReplayElement
 
-  # pylint: enable=wrong-import-position
-  _dopamine_path = os.path.dirname(inspect.getfile(dopamine))
-except ImportError:
-  # Generally we do not need dopamine in tensor2tensor
-  # We will raise exception if the code really tries to use it
-  pass
+# pylint: disable=wrong-import-position
+import dopamine
+import cv2
+from dopamine.agents.dqn import dqn_agent
+from dopamine.atari import run_experiment
+from dopamine.agents.dqn.dqn_agent import OBSERVATION_SHAPE, STACK_SIZE
+from dopamine.replay_memory import circular_replay_buffer
+from dopamine.replay_memory.circular_replay_buffer import \
+OutOfGraphReplayBuffer, ReplayElement
+
+# pylint: enable=wrong-import-position
+_dopamine_path = os.path.dirname(inspect.getfile(dopamine))
 
 
 class ResizeObservation(gym.ObservationWrapper):
@@ -191,9 +187,8 @@ def get_create_env_fun(env_spec, world_model_dir, time_limit):
     del game_name, sticky_actions
     if simulated:
       print("Time limit:{}".format(time_limit))
-      # time_limit = 10
       batch_env = SimulatedBatchGymEnv(env_spec, 1, model_dir=world_model_dir)
-      batch_env = Dumper(batch_env, quiet_exit_on_step=1000)
+      batch_env = Dumper(batch_env, dump_lambda=lambda x: x<100)
     else:
       batch_env = env_spec.env
 

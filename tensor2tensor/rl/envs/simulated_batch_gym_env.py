@@ -45,11 +45,9 @@ class Dumper(object):
 
     pil_image = Image.fromarray(obs[0, ...])
     ctx = neptune.Context()
-    ctx.channel_send('dumper_image', neptune.Image(
-      name='Frame: {}'.format(self._index),
-      description='',
-      data=pil_image
-    ))
+    ctx.channel_send('dumper_image', x=self._index,
+                     y=neptune.Image(name='Frame: {}'.format(self._index),
+                                   description='', data=pil_image))
 
   def step(self, action):
     import numpy as np
@@ -57,9 +55,11 @@ class Dumper(object):
     obs, rewards, dones = ret
     if self._dump_lambda(self._index):
       np.savez("save_{}".format(self._index), obs=obs, rewards=rewards, dones=dones)
+      self._send_image_to_neptune(obs)
+
 
     self._index += 1
-    if self._quiet_exit_on_step is not None and self._index>=self._quiet_exit_on_step:
+    if self._quiet_exit_on_step is not None and self._index==self._quiet_exit_on_step:
       print("Exiting!!!!")
       exit(0)
     return ret

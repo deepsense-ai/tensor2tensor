@@ -43,10 +43,7 @@ from tensor2tensor.models.research import rl
 from tensor2tensor.rl import rl_trainer_lib
 from tensor2tensor.rl import trainer_model_based_params
 from tensor2tensor.utils import trainer_lib
-try:
-  from tensor2tensor.rl.dopamine_connector import dopamine_trainer
-except:
-  print("Dopamine could not be imported. DQN will not work")
+from tensor2tensor.rl.dopamine_connector import dopamine_trainer
 
 import tensorflow as tf
 

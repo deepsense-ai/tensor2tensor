@@ -178,6 +178,7 @@ def train_agent(
       split=tf.contrib.learn.ModeKeys.TRAIN,
       minimal_rollout_frames=frame_stack_size,
   )
+  a = 2  # TODO: remove this
   # TODO(koz4k): Move this to a different module.
   def initial_frame_chooser(batch_size):
     """Frame chooser."""

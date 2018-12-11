@@ -64,11 +64,12 @@ def initialize_env_specs(hparams):
   """Initializes env_specs using T2TGymEnvs."""
   if getattr(hparams, "game", None):
     game_name = gym_env.camel_case_name(hparams.game)
-    env = gym_env.T2TGymEnv("{}Deterministic-v4".format(game_name),
+    game = getattr(hparams, "game")
+    env = gym_env.T2TGymEnv(game,
                             batch_size=hparams.batch_size)
     env.start_new_epoch(0)
     hparams.add_hparam("env_fn", rl.make_real_env_fn(env))
-    eval_env = gym_env.T2TGymEnv("{}Deterministic-v4".format(game_name),
+    eval_env = gym_env.T2TGymEnv(game,
                                  batch_size=hparams.eval_batch_size)
     eval_env.start_new_epoch(0)
     hparams.add_hparam("eval_env_fn", rl.make_real_env_fn(eval_env))

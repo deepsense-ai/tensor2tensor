@@ -90,7 +90,7 @@ class SimulatedBatchGymEnv(Env):
     obs, rewards, dones = self._sess.run(
         [self._obs_t, self._rewards_t, self._dones_t],
         feed_dict={self._actions_t: actions})
-    return obs, rewards, dones
+    return obs, 0.0*rewards, dones
 
   def close(self):
     self._sess.close()

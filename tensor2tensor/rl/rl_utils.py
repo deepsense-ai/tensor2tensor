@@ -104,12 +104,11 @@ LEARNERS = {
 
 def setup_env(hparams, batch_size, max_num_noops):
   """Setup."""
-  game_mode = "NoFrameskip-v4"
+  game_mode = "Deterministic-v4"
   camel_game_name = "".join(
       [w[0].upper() + w[1:] for w in hparams.game.split("_")])
   camel_game_name += game_mode
   env_name = camel_game_name
-  print("Env_name:{}".format(env_name))
 
   env = T2TGymEnv(base_env_name=env_name,
                   batch_size=batch_size,

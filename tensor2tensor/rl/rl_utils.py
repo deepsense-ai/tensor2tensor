@@ -301,6 +301,8 @@ def run_rollouts(
       for (i, observation) in zip(now_done_indices, reset_observations):
         observations[i] = observation
     observations = np.array(observations)
+    if rewards.sum() > 0:
+      a = 1
     cum_rewards = cum_rewards * discount_factor + rewards
     step_index += 1
 
@@ -454,6 +456,9 @@ class PlannerAgent(BatchAgent):
           initial_rewards + self._discount_factor * cum_rewards +
           self._discount_factor ** (self._planning_horizon + 1) * values
       )
+      print('PLANNER action {0}, mean value {1:.4f} (std {2:.4f})'.format(
+          action, float(total_values.mean()),
+          float(total_values.std() / np.sqrt(total_values.size))))
       return total_values.mean()
 
     def run_batches_from(observation, action, planner_index):

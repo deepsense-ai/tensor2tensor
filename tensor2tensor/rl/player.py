@@ -245,9 +245,8 @@ class PlayerEnv(gym.Env):
         (1, 15), "fc:{:3}".format(int(self._frame_counter)),
         fill=(255, 0, 0)
     )
-    header = np.asarray(img)
+    header = np.array(img)
     del img
-    header.setflags(write=1)
     # Top row color indicates if WAIT MODE is on.
     if self._wait:
       pixel_fill = (0, 255, 0)

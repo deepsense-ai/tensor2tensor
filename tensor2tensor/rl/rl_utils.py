@@ -250,9 +250,8 @@ def augment_observation(
       (1, 15), "f:{:3}".format(int(frame_index)),
       fill=(255, 0, 0)
   )
-  header = np.asarray(img)
+  header = np.array(img)
   del img
-  header.setflags(write=1)
   if bar_color is not None:
     header[0, :, :] = bar_color
   return np.concatenate([header, observation], axis=0)

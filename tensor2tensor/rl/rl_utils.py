@@ -257,6 +257,18 @@ def augment_observation(
   return np.concatenate([header, observation], axis=0)
 
 
+import neptune
+_ctx = neptune.Context()
+def neptune_logger(m, v):
+ global _ctx
+ if _ctx.experiment_id is None:
+   print(rf"{m}:{v}")
+ else:
+   _ctx.channel_send(name=m, x=None, y=v)
+
+logger = neptune_logger
+
+
 def run_rollouts(
     env, agent, initial_observations, step_limit=None, discount_factor=1.0,
     log_every_steps=None, video_writer=None
@@ -318,6 +330,7 @@ def run_rollouts(
 
     # TODO(afrozm): Clean this up with tf.logging.log_every_n
     if log_every_steps is not None and step_index % log_every_steps == 0:
+      logger('mean_score', cum_rewards.mean())
       tf.logging.info("Step %d, mean_score: %f", step_index, cum_rewards.mean())
 
   return (observations, cum_rewards)

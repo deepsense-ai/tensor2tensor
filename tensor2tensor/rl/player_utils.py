@@ -326,6 +326,7 @@ class PPOPolicyInferencer(object):
       )
       self.sess = tf.Session()
       self.sess.run(tf.global_variables_initializer())
+      print("policy_dir", policy_dir)
       trainer_lib.restore_checkpoint(policy_dir, model_saver,
                                      self.sess)
 
@@ -359,7 +360,7 @@ class PPOPolicyInferencer(object):
     logits, vf = self.infer_from_frame_stack(self._frame_stack)
     return logits, vf
 
-  def infer_from_frame_stack(self, ob_stack):
+  def infer_from_frame_stack(self, ob_stack=None):
     """Infer policy from stack of observations.
 
     Args:
@@ -368,6 +369,8 @@ class PPOPolicyInferencer(object):
     Returns:
       logits and vf.
     """
+    if ob_stack is None:
+      ob_stack = self._frame_stack
     logits, vf = self.sess.run([self.logits_t, self.value_function_t],
                                feed_dict={self.obs_t: ob_stack})
     return logits, vf

@@ -61,6 +61,7 @@ from tensor2tensor.rl import player_utils
 from tensor2tensor.rl.envs.simulated_batch_env import PIL_Image
 from tensor2tensor.rl.envs.simulated_batch_env import PIL_ImageDraw
 from tensor2tensor.rl.envs.simulated_batch_gym_env import FlatBatchEnv
+from tensor2tensor.rl.player_utils import PPOPolicyInferencer
 from tensor2tensor.rl.rl_utils import absolute_hinge_difference
 from tensor2tensor.rl.rl_utils import full_game_name
 # Import flags from t2t_trainer and trainer_model_based
@@ -134,7 +135,7 @@ class PlayerEnv(gym.Env):
   TOGGLE_WAIT_ACTION = 102
   WAIT_MODE_NOOP_ACTION = 103
 
-  HEADER_HEIGHT = 27
+  HEADER_HEIGHT = 39
 
   def __init__(self, action_meanings):
     """Constructor for PlayerEnv.
@@ -221,9 +222,10 @@ class PlayerEnv(gym.Env):
 
     self._last_step_tuples = envs_step_tuples
     ob, reward, done, info = self._player_step_tuple(envs_step_tuples)
+
     return ob, reward, done, info
 
-  def _augment_observation(self, ob, reward, cumulative_reward):
+  def _augment_observation(self, ob, reward, cumulative_reward, vf=0):
     """"Expand observation array with additional information header (top rows).
 
     Args:
@@ -242,9 +244,15 @@ class PlayerEnv(gym.Env):
         fill=(255, 0, 0)
     )
     draw.text(
-        (1, 15), "fc:{:3}".format(int(self._frame_counter)),
+        (1, 13), "fc:{:3}".format(int(self._frame_counter)),
         fill=(255, 0, 0)
     )
+
+    draw.text(
+      (1, 26), "vf:{:.3f}".format(float(vf)),
+      fill=(255, 0, 0)
+    )
+
     header = np.array(img)
     del img
     # Top row color indicates if WAIT MODE is on.
@@ -303,7 +311,8 @@ class SimAndRealEnvPlayer(PlayerEnv):
 
   RESTART_SIMULATED_ENV_ACTION = 110
 
-  def __init__(self, real_env, sim_env, action_meanings):
+  def __init__(self, real_env, sim_env, action_meanings,
+               pi_sim=None, pi_real=None):
     """Init.
 
     Args:
@@ -330,6 +339,9 @@ class SimAndRealEnvPlayer(PlayerEnv):
     self.observation_space = gym.spaces.Box(low=orig.low.min(),
                                             high=orig.high.max(),
                                             shape=shape, dtype=orig.dtype)
+    self.pi_sim = pi_sim
+    self.pi_real = pi_real
+    self._vf_sim = 0.
 
   def _player_actions(self):
     actions = super(SimAndRealEnvPlayer, self)._player_actions()
@@ -363,27 +375,57 @@ class SimAndRealEnvPlayer(PlayerEnv):
     ob_err = absolute_hinge_difference(ob_sim, ob_real)
 
     ob_real_aug = self._augment_observation(ob_real, reward_real,
-                                            self.cumulative_real_reward)
+                                            self.cumulative_real_reward,
+                                            self._vf_real)
     ob_sim_aug = self._augment_observation(ob_sim, reward_sim,
-                                           self.cumulative_sim_reward)
+                                           self.cumulative_sim_reward,
+                                           self._vf_sim)
     ob_err_aug = self._augment_observation(
         ob_err, reward_sim - reward_real,
-        self.cumulative_sim_reward - self.cumulative_real_reward
+        self.cumulative_sim_reward - self.cumulative_real_reward,
+        self._vf_sim - self._vf_real
     )
     ob = np.concatenate([ob_sim_aug, ob_real_aug, ob_err_aug], axis=1)
     _, reward, done, info = envs_step_tuples["real_env"]
     return ob, reward, done, info
 
+  def reset_sim_env(self):
+    ob_sim = self.sim_env.reset()
+    self.pi_sim.reset_frame_stack(self.pi_real._frame_stack)
+    _, self._vf_sim = self.pi_sim.infer_from_frame_stack()
+    # self.pi_sim._add_to_stack(ob_sim)
+    return ob_sim
+
+  def reset_real_env(self):
+    ob_real = self.real_env.reset()
+    self.pi_real.reset_frame_stack()
+    _, self._vf_real = self.pi_real.infer(ob_real)
+    return ob_real
+
+  def step_real_env(self, action):
+    ob, reward, done, info = self.real_env.step(action)
+    _, self._vf_real = self.pi_real.infer(ob)
+    return ob, reward, done, info
+
+  def step_sim_env(self, action):
+    ob, reward, done, info = self.sim_env.step(action)
+    _, self._vf_sim = self.pi_sim.infer(ob)
+    return ob, reward, done, info
+
   def reset(self):
     """Reset simulated and real environments."""
     self._frame_counter = 0
-    ob_real = self.real_env.reset()
+    ob_real = self.reset_real_env()
     # Initialize simulated environment with frames from real one.
     self.sim_env.add_to_initial_stack(ob_real)
+    # _, self._vf_sim = self.pi_sim.infer(ob_real)
     for _ in range(3):
-      ob_real, _, _, _ = self.real_env.step(self.name_to_action_num["NOOP"])
+      ob_real, _, _, _ = self.step_real_env(self.name_to_action_num["NOOP"])
       self.sim_env.add_to_initial_stack(ob_real)
-    ob_sim = self.sim_env.reset()
+      # _, self._vf_sim = self.pi_sim.infer(ob_real)
+
+    ob_sim = self.reset_sim_env()
+
     assert np.all(ob_real == ob_sim)
     self._last_step_tuples = self._pack_step_tuples((ob_real, 0, False, {}),
                                                     (ob_sim, 0, False, {}))
@@ -402,9 +444,11 @@ class SimAndRealEnvPlayer(PlayerEnv):
   def _step_envs(self, action):
     """Perform step(action) on environments and update initial_frame_stack."""
     self._frame_counter += 1
-    real_env_step_tuple = self.real_env.step(action)
-    sim_env_step_tuple = self.sim_env.step(action)
+    real_env_step_tuple = self.step_real_env(action)
+    sim_env_step_tuple = self.step_sim_env(action)
     self.sim_env.add_to_initial_stack(real_env_step_tuple[0])
+    # _, self._vf_sim = self.pi_sim.infer(sim_env_step_tuple[0])
+    # _, self._vf_real = self.pi_real.infer(real_env_step_tuple[0])
     return self._pack_step_tuples(real_env_step_tuple, sim_env_step_tuple)
 
   def _update_statistics(self, envs_step_tuples):
@@ -418,7 +462,7 @@ class SimAndRealEnvPlayer(PlayerEnv):
 
   def player_restart_simulated_env_action(self):
     self._frame_counter = 0
-    ob = self.sim_env.reset()
+    ob = self.reset_sim_env()  # self.sim_env.reset()
     assert np.all(self._last_step_tuples["real_env"][0] == ob)
     self.set_zero_cumulative_rewards()
     return self._pack_step_tuples(
@@ -515,7 +559,14 @@ def main(_):
     sim_env = make_simulated_env(
         which_epoch_data=None, setable_initial_frames=True)
     real_env = make_real_env()
-    env = SimAndRealEnvPlayer(real_env, sim_env, action_meanings)
+    pi_sim = PPOPolicyInferencer(
+        hparams, real_env.action_space,real_env.observation_space,
+        policy_dir=directories['policy'])
+    pi_real = PPOPolicyInferencer(
+        hparams, real_env.action_space, real_env.observation_space,
+        policy_dir=directories['policy'])
+    env = SimAndRealEnvPlayer(real_env, sim_env, action_meanings,
+                              pi_sim, pi_real)
   else:
     if FLAGS.simulated_env:
       env = make_simulated_env(  # pylint: disable=redefined-variable-type

@@ -25,7 +25,8 @@ import os
 from tensor2tensor.layers import common_layers
 from tensor2tensor.models.research.rl import get_policy
 from tensor2tensor.rl import ppo
-from tensor2tensor.rl.envs.tf_atari_wrappers import StackWrapper
+from tensor2tensor.rl.envs.tf_atari_wrappers import StackWrapper, \
+  StickyActionsWrapper
 from tensor2tensor.rl.envs.tf_atari_wrappers import WrapperBase
 from tensor2tensor.rl.policy_learner import PolicyLearner
 from tensor2tensor.rl.restarter import Restarter
@@ -332,9 +333,11 @@ def _define_collect(batch_env, ppo_hparams, scope, frame_stack_size, eval_phase,
     num_agents = batch_env.batch_size
 
     to_initialize.append(batch_env)
-    wrappers = [(StackWrapper, {
+    wrappers = [
+      (StickyActionsWrapper, {}),
+      (StackWrapper, {
         "history": frame_stack_size
-    }), (_MemoryWrapper, {})]
+      }), (_MemoryWrapper, {})]
     rollout_metadata = None
     speculum = None
     for w in wrappers:

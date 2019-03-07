@@ -88,6 +88,27 @@ class WrapperBase(InGraphBatchEnv):
     )
 
 
+class StickyActionsWrapper(WrapperBase):
+  def __init__(self, batch_env, p=0.05):
+    super(StickyActionsWrapper, self).__init__(batch_env)
+    self._last_action = tf.Variable(tf.zeros((len(self),), tf.int32),
+                                    trainable=False)
+    self._observ = tf.Variable(
+        tf.zeros((1,) + self.observ_shape, self.observ_dtype), trainable=False)
+    self._action_repetition_prob = p
+
+  def simulate(self, action):
+    def override_action_with_new_one():
+      with tf.control_dependencies([tf.assign(self._last_action, action)]):
+        return tf.identity(self._last_action)
+
+    action_to_perform = tf.cond(
+      tf.less(tf.random.uniform(()), 1 - self._action_repetition_prob),
+      override_action_with_new_one, lambda: tf.identity(self._last_action)
+    )
+    return self._batch_env.simulate(action_to_perform)
+
+
 class StackWrapper(WrapperBase):
   """A wrapper which stacks previously seen frames."""
 

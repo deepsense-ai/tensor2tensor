@@ -33,7 +33,7 @@ from six.moves import range  # pylint: disable=redefined-builtin
 import six.moves.urllib_request as urllib
 
 from tensor2tensor.data_generators import text_encoder
-from tensor2tensor.data_generators.ops import pack_sequences_ops
+#from tensor2tensor.data_generators.ops import pack_sequences_ops
 from tensor2tensor.utils import mlperf_log
 
 import tensorflow as tf
